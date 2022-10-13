@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #define MAX 80
 #define PORT 8080
 #define SA struct sockaddr
@@ -27,8 +28,42 @@ void func(int sockfd)
     }
 }
    
-int main()
+int main(int argc, char *argv[])
 {
+    int time;
+    int speed;
+    int key;
+    int s = strlen(argv[argc-1]);
+    char* str = malloc(s*sizeof(char));
+    char* server = malloc((s-5)*sizeof(char));
+    char* p = malloc(sizeof(char)*4);
+    int port = 0;
+    strcpy(str, argv[argc-1]);
+    
+    strncpy(server, str, (s-5)*sizeof(char));
+
+    int opt;
+    while((opt = getopt(argc, argv, "k:r:t:?")) != -1){
+        switch(opt){
+            case 'k':
+                key = atoi(optarg);
+                break;
+            case 'r':
+                speed = atoi(optarg);
+                break;
+            case 't':
+                time = atoi(optarg);
+                break;
+            default :
+                printf("something goes wrong !");
+        }
+        
+    }
+    p = &str[strlen(str)-4];
+    port = atoi(p);
+    printf("time : %d\nspeed : %d\nkey : %d\nport : %d\ntcp : %s\n", time, speed, key, port, server);
+
+
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
    
