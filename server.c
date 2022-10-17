@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 #define MAX 80
 #define PORT 8080
 #define SA struct sockaddr
@@ -40,8 +41,31 @@ void func(int connfd)
 }
    
 // Driver function
-int main()
+int main(int argc, char* argv[])
 {
+    int opt;
+    int port = 2241;
+    int nthread = 4;
+    int size = 1024;
+
+
+    while((opt = getopt(argc, argv, "j:s:p:?")) != -1){
+        switch(opt){
+            case 'j':
+                nthread = atoi(optarg);
+                break;
+            case 's':
+                size = atoi(optarg);
+                break;
+            case 'p':
+                port = atoi(optarg);
+                break;
+            default :
+                printf("something goes wrong !");
+        }
+    }
+    printf("%d %d %d\n", nthread, size, port);
+
     int sockfd, connfd, len;
     struct sockaddr_in servaddr, cli;
    
