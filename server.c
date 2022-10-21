@@ -17,7 +17,7 @@
 
 client_request_d client_data;
 server_response_d server_result;
-char data_buffer[1024];
+char data_buffer[1048584];
 
 int controlfd_set[64];
 

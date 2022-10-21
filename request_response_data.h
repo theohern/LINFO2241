@@ -9,6 +9,6 @@ typedef struct server_response_data
 {
    unsigned int errorCode;
    unsigned int file_size;
-   char reslt[1029];
+   char reslt[1048584];
 
 }server_response_d;
