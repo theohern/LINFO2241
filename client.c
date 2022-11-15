@@ -12,7 +12,8 @@
 
 #define DEST_PORT  8080
 int npages = 1000;
-int ok = 1;
+int ok = 0;
+pthread_mutex_t reqmutex;
 
 client_request_d client_data;
 server_response_d server_result;
@@ -83,7 +84,10 @@ void * rcv(void* r){
             left -=  recv(sockfd, &buffer, b, 0);
         }
     }
-    ok = 1;
+
+    pthread_mutex_lock(&reqmutex);
+    ok ++;
+    pthread_mutex_unlock(&reqmutex);
 
     // printf("encrypted file : ");
     // for(int i = 0; i < sz; i++){
@@ -146,10 +150,10 @@ main(int argc, char **argv){
         key[i] = rand()%10;
     }
     printf("keysz : %d\nrate : %d\ntime : %d\nport : %d\nip : %s\n", keysz, rate, times, port, server);
-    printf("key : ");
-    for (int j = 0; j < keysz*keysz; j++){
-        printf("%d", key[j]);
-    }
+    // printf("key : ");
+    // for (int j = 0; j < keysz*keysz; j++){
+    //     printf("%d", key[j]);
+    // }
     printf("\n");
 
     arg_d* argument = malloc(sizeof(arg_d));
@@ -181,12 +185,18 @@ main(int argc, char **argv){
         
     }        
 
-    while(ok){
-        ok = 0;
-        usleep(250000);
+    while(ok != i){
+
     }
     
     printf("number of request : %d\n", i);
     printf("application quits\n");
+    // free(str);
+    // free(server);
+    // free(p);
+    free(key);
+    free(argument->receive_times);
+    free(argument);
     return 0;
+
 }

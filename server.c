@@ -31,7 +31,8 @@ void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
     tread = recv(sockfd, &keysz, 4, 0);
     //Network byte order
     //keysz = ntohl(keysz);
-    //keysz = 8;
+    keysz = 128;
+    fileid = 123;
 
     printf("keysz=%d, fileid=%d\n", keysz, fileid);
     int32_t key[keysz*keysz];
@@ -69,12 +70,47 @@ void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
             }
         }
     }
+
+    // for (int i = 0; i < nr ; i ++) {
+    //     int vstart = i * keysz;
+    //     for (int j = 0; j < nr; j++) {
+    //         int hstart = j * keysz;
+
+    //         //Do the sub-matrix multiplication
+    //         for (int ln = 0; ln < keysz; ln++) {
+
+    //             int aline = (vstart + ln) * nbytes + hstart;
+    //             for (int k = 0; k < keysz; k++) {
+
+    //                 int a = key[ln * keysz + k];
+    //                 int vline = (vstart + k) * nbytes + hstart;
+    //                 for (int col = 0; col < keysz; col+=8) {
+    //                     crypted[aline + col] +=  a * file[vline + col];
+    //                     crypted[aline + col +1] +=  a * file[vline + col +1];
+    //                     crypted[aline + col +2] +=  a * file[vline + col +2];
+    //                     crypted[aline + col +3] +=  a * file[vline + col +3];
+    //                     crypted[aline + col +4] +=  a * file[vline + col +4];
+    //                     crypted[aline + col +5] +=  a * file[vline + col +5];
+    //                     crypted[aline + col +6] +=  a * file[vline + col +6];
+    //                     crypted[aline + col +7] +=  a * file[vline + col +7];
+    //                 }
+
+    //             }
+    //         }
+    //     }
+    // }
+
+
+
+
+
     int err = 0;
     send(sockfd, &err, 1,MSG_NOSIGNAL );
     unsigned sz = htonl(nbytes*nbytes * sizeof(int32_t));
     send(sockfd, &sz, 4, MSG_NOSIGNAL);
     send(sockfd, crypted, nbytes*nbytes * sizeof(int32_t),MSG_NOSIGNAL );
     printf("fin du send\n");
+    free(crypted);
 
 
 }
@@ -172,4 +208,8 @@ int main(int argc, char **argv)
 
 	// After chatting close the socket
 	close(sockfd);
+    for (int i = 0; i < npages; i++){
+        free(pages[i]);
+    }
+    free(pages);
 }
