@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h> 
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -6,119 +6,115 @@
 #include <memory.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <time.h>
 #include  "request_response_data.h"
 
-#define DEST_PORT            2000
-#define MAX 80
-#define SERVER_IP_ADDRESS   "127.0.0.1"
+#define DEST_PORT  8080
+int npages = 100;
+int nreq = 0;
 
 client_request_d client_data;
 server_response_d server_result;
 
-void tcp_communication(int s_key, int port, int time , int speed, char* ipaddr, char* key){
+typedef struct arg
+{
+    int32_t* key;
+    int i;
+    int keysz;
+    int* receive_times;
+}arg_d;
 
-    /*Initialization*/   
-    int sockfd = 0, 
-        sent_recv_data= 0;
+int getts();
 
-    int addr_len = 0;
+void * rcv(void* r){
+    int port = 8080;
 
-    addr_len = sizeof(struct sockaddr);
+    arg_d* argument = (arg_d*) r;
+    int32_t* key = argument->key;
+    int keysz = argument->keysz;
 
-    struct sockaddr_in dest;
-
-    /* server information*/   
-    dest.sin_family = AF_INET;
-
-    /*Client wants  send data to server process */
- 
-    dest.sin_port = port;
-    struct hostent *host = (struct hostent *)gethostbyname(ipaddr);
-    dest.sin_addr = *((struct in_addr *)host->h_addr);
+    /*Initialization*/    
+    int sockfd, ret;
+    struct sockaddr_in servaddr;
 
     /*Create a TCP socket*/  
-    sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    //sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    connect(sockfd, (struct sockaddr *)&dest,sizeof(struct sockaddr));
-
-    /*recive data to be sent to server*/    
-
-
-    
-
-    for (int i = 0; i < speed*time; i++){
-        if (i%100 == 0){
-            printf("%d files encrypted\n", i);
-        }
-        client_data.buff[4] = (char)(s_key/1000)+48;
-        client_data.buff[5] = (char)(s_key/100)-(s_key/1000)*10+48;
-        client_data.buff[6] = (char)(s_key/10)-(s_key/100)*10+48;
-        client_data.buff[7] = (char)(s_key) - (s_key/10)*10 +48;
-
-        for (int i = 0; i < s_key*s_key; i++){
-            client_data.buff[i+8] = key[i];
-        }
-
-        client_data.buff[0] ='0';
-        client_data.buff[1] = (char) rand()%10+48;
-        client_data.buff[2] = (char)  rand()%10+48;
-        client_data.buff[3] = (char) rand()%10+48;
-
-
-        //printf("Enter request file index, key : \n");  
-
-        //scanf("%[^\n]%*c", client_data.buff);  
-        //printf("data send : %s\n", client_data.buff);  
-        
-        /*
-        printf("Enter index : ?\n");
-        scanf("%u", &client_data.file_index);
-        
-        printf("Enter key : ?\n");
-        scanf("%u", &client_data.key);
-        printf("Data %s\n",server_result.reslt);
-        
-    */     
-
-    
-
-        /*send the data to server*/
-        
-        sent_recv_data = sendto(sockfd,&client_data,sizeof(client_request_d),0, (struct sockaddr *)&dest,sizeof(struct sockaddr));
-            
-    
-        //printf("No of bytes sent = %d\n", sizeof(client_data));  
-    
-        
-        /*recvfrom data from server*/
-        sent_recv_data =  recvfrom(sockfd, (char *)&server_result, sizeof(server_response_d), 0,(struct sockaddr *)&dest, &addr_len);
-
-        //printf("No of bytes recived = %d\n", sizeof(server_response_d));
-        int x =strlen(server_result.reslt);
-        //printf("Recived file size = %d\n",x);
-        //printf("Recived encrypted file  = %s\n", server_result.reslt);
-
-        /*If client to send data agin*/
-        sleep(1/speed);
+    if ( (sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0 ) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
     }
-   
 
+     /* server information*/   
+    servaddr.sin_family = AF_INET; 
+    servaddr.sin_port = htons(port);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
 
+    if (connect(sockfd, (struct sockaddr *)&servaddr,sizeof(struct sockaddr))<0){
+        printf("error to connect.. \n");
+    }
 
+    int a = rand()%npages;
+    printf("fileid : %d\n", a);
+    //unsigned fileindex = htonl(a);
+    ret = send(sockfd, &a, 4, 0);
 
+    //int revkey = htonl(keysz);
+    ret = send(sockfd, &keysz, 4, 0);
+
+    ret = send(sockfd, key, sizeof(int32_t) * keysz * keysz, 0);
+
+    unsigned char error;
+    recv(sockfd, &error, 1, 0);
+
+    unsigned char filesz;
+    recv(sockfd, &filesz, 4, 0);     
+    int sz = 1024;
+    char buffer[65536];
+
+    if (filesz > 0) {
+        
+        long int left = ntohl(sz);  
+        while (left > 0) {
+            unsigned b = left;
+            if (b > 65536)
+                b = 65536;
+            left -=  recv(sockfd, &buffer, b, 0);
+        }
+    }
+    nreq ++;
+
+    printf("encrypted file : ");
+    for(int i = 0; i < sz; i++){
+        printf("%d", buffer[i]);
+    }
+    printf("\n");
+
+    unsigned t = argument->i;
+    argument->receive_times[t] = getts();
+    close(sockfd);
 }
     
+int getts(){
+    time_t currnt_time;
+
+    return currnt_time;
+}
 
 int
 main(int argc, char **argv){
-    int time = 5;
-    int speed = 100;
-    int s_key = 2;
+    int i = 0;
+    int next = 0;
+    double start, end;
+    int times = 5;
+    int rate = 100;
+    int keysz = 2;
     int s = strlen(argv[argc-1]);
     char* str = malloc(s*sizeof(char));
     char* server = malloc((s-5)*sizeof(char));
     char* p = malloc(sizeof(char)*4);
-    int port = 2000;
+    int port = 8080;
     strcpy(str, argv[argc-1]);
     
     strncpy(server, str, (s-5)*sizeof(char));
@@ -127,13 +123,13 @@ main(int argc, char **argv){
     while((opt = getopt(argc, argv, "k:r:t:?")) != -1){
         switch(opt){
             case 'k':
-                s_key = atoi(optarg);
+                keysz = atoi(optarg);
                 break;
             case 'r':
-                speed = atoi(optarg);
+                rate = atoi(optarg);
                 break;
             case 't':
-                time = atoi(optarg);
+                times = atoi(optarg);
                 break;
             default :
                 printf("something goes wrong !");
@@ -141,13 +137,54 @@ main(int argc, char **argv){
         
     }
     p = &str[strlen(str)-4];
-    port = atoi(p);    
-    char* key = malloc(s_key*s_key*sizeof(char));
-    for(int i = 0;i < s_key*s_key; i++){
-        key[i] = 48+rand()%10;
+    port = atoi(p); 
+    int sent_time[rate*times];
+
+    
+    int32_t* key = malloc(sizeof(int32_t) * keysz * keysz);
+    for(i = 0; i < keysz*keysz; i++){
+        key[i] = rand()%10;
     }
-    //printf("%s\n", key);
-    tcp_communication(s_key, port, time, speed, server, key);
+    printf("keysz : %d\nrate : %d\ntime : %d\nport : %d\nip : %s\n", keysz, rate, times, port, server);
+    printf("key : ");
+    for (int j = 0; j < keysz*keysz; j++){
+        printf("%d", key[j]);
+    }
+    printf("\n");
+
+    arg_d* argument = malloc(sizeof(arg_d));
+    argument->key = key;
+    argument->keysz = keysz;
+    argument->receive_times = malloc(sizeof(int) * rate * times);
+
+
+    start = time(NULL);
+
+    i = 0;
+    double diffrate = 1/rate;
+    while ((double)(time(NULL) - start) < times)
+    {
+        printf("thread created : %d\n", i);
+        printf("on en est : %f\n", (time(NULL) - start));
+        argument->i = i;
+        next += diffrate; 
+        usleep(1000000/rate);
+        sent_time[i] = time(NULL) - start;
+        pthread_t thread; 
+        pthread_create( &thread, NULL, rcv, (void*) argument);
+        i++;
+
+        //end  = getts();
+
+        //printf ("Time taken to respond : %10.6f secs.\n",(double) (end - start) / CLOCKS_PER_SEC);
+
+        
+    }        
+
+    while (i < nreq){
+        //int a = 0;
+    }
+    
     printf("application quits\n");
     return 0;
 }
