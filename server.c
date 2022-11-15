@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #define PORT 8080
 #define SA struct sockaddr
-int npages = 100;
+int npages = 1000;
 
 // Function designed for chat between client and server.
 void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
@@ -136,10 +136,9 @@ int main(int argc, char **argv)
 
     printf("pages en mémoire\n");
     //New requirement for file 0 !
-    for (unsigned i = 0; i < npages; i++)
-        for (int j = 0; j < nbytes; j++){
-            pages[i][j] = ((rand()%9) +1);
-        }
+    for (unsigned i = 0; i < nbytes*nbytes; i++)
+            pages[0][i] = i;
+        
     
     printf("pages ok\n");
 	// Now server is ready to listen and verification

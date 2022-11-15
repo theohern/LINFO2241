@@ -11,8 +11,8 @@
 #include  "request_response_data.h"
 
 #define DEST_PORT  8080
-int npages = 100;
-int nreq = 0;
+int npages = 1000;
+int ok = 1;
 
 client_request_d client_data;
 server_response_d server_result;
@@ -75,7 +75,7 @@ void * rcv(void* r){
 
     if (filesz > 0) {
         
-        long int left = ntohl(sz);  
+        long int left = sz;  
         while (left > 0) {
             unsigned b = left;
             if (b > 65536)
@@ -83,13 +83,13 @@ void * rcv(void* r){
             left -=  recv(sockfd, &buffer, b, 0);
         }
     }
-    nreq ++;
+    ok = 1;
 
-    printf("encrypted file : ");
-    for(int i = 0; i < sz; i++){
-        printf("%d", buffer[i]);
-    }
-    printf("\n");
+    // printf("encrypted file : ");
+    // for(int i = 0; i < sz; i++){
+    //     printf("%d", buffer[i]);
+    // }
+    // printf("\n");
 
     unsigned t = argument->i;
     argument->receive_times[t] = getts();
@@ -164,8 +164,8 @@ main(int argc, char **argv){
     double diffrate = 1/rate;
     while ((double)(time(NULL) - start) < times)
     {
-        printf("thread created : %d\n", i);
-        printf("on en est : %f\n", (time(NULL) - start));
+        //printf("thread created : %d\n", i);
+        //printf("on en est : %f\n", (time(NULL) - start));
         argument->i = i;
         next += diffrate; 
         usleep(1000000/rate);
@@ -181,10 +181,12 @@ main(int argc, char **argv){
         
     }        
 
-    while (i < nreq){
-        //int a = 0;
+    while(ok){
+        ok = 0;
+        usleep(250000);
     }
     
+    printf("number of request : %d\n", i);
     printf("application quits\n");
     return 0;
 }
