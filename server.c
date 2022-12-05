@@ -14,27 +14,31 @@
 #include <time.h>
 #include <limits.h>
 #include <stdbool.h>
-#define PORT 8080
-#define SA struct sockaddr
 int npages = 1000;
 
 // Function designed for chat between client and server.
 void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
 {
-    printf("connction_handler begin\n");
+    //printf("connction_handler begin\n");
     int fileid;
     int keysz;
     int sockfd = (int)(intptr_t)socket_desc;
 
     int tread = recv(sockfd, &fileid, 4, 0);
+    if (fileid >= 1000){
+        printf("file id %d is more than 1000 !\n", fileid);
+        exit(1);
+    }
     //fileid = 5;
     tread = recv(sockfd, &keysz, 4, 0);
     //Network byte order
     //keysz = ntohl(keysz);
-    keysz = 128;
-    fileid = 123;
+    if (keysz != 8 && keysz != 128){
+        printf("key size %d is different than 8 or 128 !", keysz);
+        exit(1);
+    }
 
-    printf("keysz=%d, fileid=%d\n", keysz, fileid);
+    //printf("keysz=%d, fileid=%d\n", keysz, fileid);
     int32_t key[keysz*keysz];
     unsigned tot = keysz*keysz * sizeof(int32_t);
 
@@ -48,29 +52,6 @@ void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
     int32_t* file = pages[fileid % npages];
     int32_t* crypted = malloc(nbytes*nbytes * sizeof(int32_t));
     //Compute sub-matrices
-    for (int i = 0; i < nr ; i ++) {
-        int vstart = i * keysz;
-        for (int j = 0; j < nr; j++) {
-            int hstart = j * keysz;
-
-            //Do the sub-matrix multiplication
-            for (int ln = 0; ln < keysz; ln++) {
-
-                int aline = (vstart + ln) * nbytes + hstart;
-                for (int col = 0; col < keysz; col++) {
-
-                    int tot = 0;
-                    for (int k = 0; k < keysz; k++) {
-                        int vline = (vstart + k) * nbytes + hstart;
-                        tot += key[ln * keysz + k] * file[vline + col];
-                    }
-                    crypted[aline + col] = tot;
-
-                }
-            }
-        }
-    }
-
     // for (int i = 0; i < nr ; i ++) {
     //     int vstart = i * keysz;
     //     for (int j = 0; j < nr; j++) {
@@ -80,25 +61,48 @@ void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
     //         for (int ln = 0; ln < keysz; ln++) {
 
     //             int aline = (vstart + ln) * nbytes + hstart;
-    //             for (int k = 0; k < keysz; k++) {
+    //             for (int col = 0; col < keysz; col++) {
 
-    //                 int a = key[ln * keysz + k];
-    //                 int vline = (vstart + k) * nbytes + hstart;
-    //                 for (int col = 0; col < keysz; col+=8) {
-    //                     crypted[aline + col] +=  a * file[vline + col];
-    //                     crypted[aline + col +1] +=  a * file[vline + col +1];
-    //                     crypted[aline + col +2] +=  a * file[vline + col +2];
-    //                     crypted[aline + col +3] +=  a * file[vline + col +3];
-    //                     crypted[aline + col +4] +=  a * file[vline + col +4];
-    //                     crypted[aline + col +5] +=  a * file[vline + col +5];
-    //                     crypted[aline + col +6] +=  a * file[vline + col +6];
-    //                     crypted[aline + col +7] +=  a * file[vline + col +7];
+    //                 int tot = 0;
+    //                 for (int k = 0; k < keysz; k++) {
+    //                     int vline = (vstart + k) * nbytes + hstart;
+    //                     tot += key[ln * keysz + k] * file[vline + col];
     //                 }
+    //                 crypted[aline + col] = tot;
 
     //             }
     //         }
     //     }
     // }
+
+    for (int i = 0; i < nr ; i ++) {
+        int vstart = i * keysz;
+        for (int j = 0; j < nr; j++) {
+            int hstart = j * keysz;
+
+            //Do the sub-matrix multiplication
+            for (int ln = 0; ln < keysz; ln++) {
+
+                int aline = (vstart + ln) * nbytes + hstart;
+                for (int k = 0; k < keysz; k++) {
+
+                    int a = key[ln * keysz + k];
+                    int vline = (vstart + k) * nbytes + hstart;
+                    for (int col = 0; col < keysz; col+=8) {
+                        crypted[aline + col] +=  a * file[vline + col];
+                        crypted[aline + col+1] +=  a * file[vline + col+1];
+                        crypted[aline + col+2] +=  a * file[vline + col+2];
+                        crypted[aline + col+3] +=  a * file[vline + col+3];
+                        crypted[aline + col+4] +=  a * file[vline + col+4];
+                        crypted[aline + col+5] +=  a * file[vline + col+5];
+                        crypted[aline + col+6] +=  a * file[vline + col+6];
+                        crypted[aline + col+7] +=  a * file[vline + col+7];
+                    }
+
+                }
+            }
+        }
+    }
 
 
 
@@ -109,7 +113,6 @@ void connection_handler(void *socket_desc,int nbytes, int32_t **pages)
     unsigned sz = htonl(nbytes*nbytes * sizeof(int32_t));
     send(sockfd, &sz, 4, MSG_NOSIGNAL);
     send(sockfd, crypted, nbytes*nbytes * sizeof(int32_t),MSG_NOSIGNAL );
-    printf("fin du send\n");
     free(crypted);
 
 
@@ -170,13 +173,11 @@ int main(int argc, char **argv)
         pages[i] = malloc(nbytes*nbytes *sizeof(int32_t));
 
 
-    printf("pages en mémoire\n");
     //New requirement for file 0 !
     for (unsigned i = 0; i < nbytes*nbytes; i++)
             pages[0][i] = i;
         
     
-    printf("pages ok\n");
 	// Now server is ready to listen and verification
 
 	if ((listen(sockfd, 128)) != 0) {
@@ -185,23 +186,13 @@ int main(int argc, char **argv)
 	}
 	else
 		printf("Server listening..\n");
-	//len = sizeof(cli);
-
-	// Accept the data packet from client and verification
-	// connfd = accept(sockfd, (struct sockaddr *)&servaddr, &cli);
-	// if (connfd < 0) {
-	// 	printf("server accept failed...\n");
-	// 	exit(0);
-	// }
-	// else
-	// 	printf("server accept the client...\n");
 
     int client_sock;
 
 	// Function for chatting between client and server
     while( (client_sock = accept(sockfd, (struct sockaddr *)&servaddr, (socklen_t*)&cli)) )
     {
-        printf("server accept the socket\n");
+        //printf("server accept the socket\n");
         connection_handler((void*)(intptr_t)client_sock, nbytes, pages);
     }
 
