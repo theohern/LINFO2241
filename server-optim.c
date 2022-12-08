@@ -14,8 +14,9 @@
 #include <time.h>
 #include <limits.h>
 #include <stdbool.h>
-int npages = 1000;
+
 #define ARRAY_TYPE float
+int npages = 1000;
 
 // Function designed for chat between client and server.
 void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
@@ -52,8 +53,30 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
     int nr = nbytes / keysz;
     ARRAY_TYPE* file = pages[fileid % npages];
     ARRAY_TYPE* crypted = malloc(nbytes*nbytes * sizeof(ARRAY_TYPE));
-
     //Compute sub-matrices
+    // for (int i = 0; i < nr ; i ++) {
+    //     int vstart = i * keysz;
+    //     for (int j = 0; j < nr; j++) {
+    //         int hstart = j * keysz;
+
+    //         //Do the sub-matrix multiplication
+    //         for (int ln = 0; ln < keysz; ln++) {
+
+    //             int aline = (vstart + ln) * nbytes + hstart;
+    //             for (int col = 0; col < keysz; col++) {
+
+    //                 int tot = 0;
+    //                 for (int k = 0; k < keysz; k++) {
+    //                     int vline = (vstart + k) * nbytes + hstart;
+    //                     tot += key[ln * keysz + k] * file[vline + col];
+    //                 }
+    //                 crypted[aline + col] = tot;
+
+    //             }
+    //         }
+    //     }
+    // }
+
     for (int i = 0; i < nr ; i ++) {
         int vstart = i * keysz;
         for (int j = 0; j < nr; j++) {
@@ -63,14 +86,20 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
             for (int ln = 0; ln < keysz; ln++) {
 
                 int aline = (vstart + ln) * nbytes + hstart;
-                for (int col = 0; col < keysz; col++) {
+                for (int k = 0; k < keysz; k++) {
 
-                    int tot = 0;
-                    for (int k = 0; k < keysz; k++) {
-                        int vline = (vstart + k) * nbytes + hstart;
-                        tot += key[ln * keysz + k] * file[vline + col];
+                    int a = key[ln * keysz + k];
+                    int vline = (vstart + k) * nbytes + hstart;
+                    for (int col = 0; col < keysz; col+=8) {
+                        crypted[aline + col] +=  a * file[vline + col];
+                        crypted[aline + col+1] +=  a * file[vline + col+1];
+                        crypted[aline + col+2] +=  a * file[vline + col+2];
+                        crypted[aline + col+3] +=  a * file[vline + col+3];
+                        crypted[aline + col+4] +=  a * file[vline + col+4];
+                        crypted[aline + col+5] +=  a * file[vline + col+5];
+                        crypted[aline + col+6] +=  a * file[vline + col+6];
+                        crypted[aline + col+7] +=  a * file[vline + col+7];
                     }
-                    crypted[aline + col] = tot;
 
                 }
             }

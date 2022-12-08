@@ -8,12 +8,16 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
+#include <sys/time.h>
 
-#define DEST_PORT  8080
+#define ARRAY_TYPE float
 int npages = 1000;
+
+struct timeval begin, finish;
+
 typedef struct arg
 {
-    int32_t* key;
+    ARRAY_TYPE* key;
     int i;
     int keysz;
     int* receive_times;
@@ -22,7 +26,7 @@ typedef struct arg
 
 void * rcv(void* r){
     arg_d* argument = (arg_d*) r;
-    int32_t* key = argument->key;
+    ARRAY_TYPE* key = argument->key;
     int keysz = argument->keysz;
     int port = argument->port;
 
@@ -47,14 +51,19 @@ void * rcv(void* r){
         printf("error to connect.. \n");
     }
 
+
+    gettimeofday(&begin, NULL);
+
+
     int a = rand()%npages;
     //unsigned fileindex = htonl(a);
+
     ret = send(sockfd, &a, 4, 0);
 
     //int revkey = htonl(keysz);
     ret = send(sockfd, &keysz, 4, 0);
 
-    ret = send(sockfd, key, sizeof(int32_t) * keysz * keysz, 0);
+    ret = send(sockfd, key, sizeof(ARRAY_TYPE) * keysz * keysz, 0);
 
     unsigned char error;
     recv(sockfd, &error, 1, 0);
@@ -75,12 +84,21 @@ void * rcv(void* r){
             left -=  recv(sockfd, &buffer, b, 0);
         }
     }
+    gettimeofday(&finish, NULL);
 
-
-    unsigned t = argument->i;
+    long seconds = (finish.tv_sec - begin.tv_sec);
+    long micros = ((seconds * 1000000) + finish.tv_usec) - (begin.tv_usec);
+    argument->receive_times[argument->i] = (int) micros;
     close(sockfd);
 }
     
+int mean (int* tab, int size){
+    int sum = 0;
+    for (int i = 0; i < size; i++){
+        sum+=tab[i];
+    }
+    return sum/size;
+}
 
 
 int
@@ -121,7 +139,7 @@ main(int argc, char **argv){
     int sent_time[rate*times];
 
     
-    int32_t* key = malloc(sizeof(int32_t) * keysz * keysz);
+    ARRAY_TYPE* key = malloc(sizeof(ARRAY_TYPE) * keysz * keysz);
     for(i = 0; i < keysz*keysz; i++){
         key[i] = rand()%10;
     }
@@ -139,38 +157,48 @@ main(int argc, char **argv){
     argument->port = port;
 
 
+
+
+    pthread_t thread_pool[rate*times];
+
+    for (int i = 0; i < rate*times; i++){
+        pthread_create(&thread_pool[i], NULL, rcv, argument);
+    }
+
     int start = time(NULL);
     int temp = time(NULL);
-
     i = 0;
     double diffrate = 1/rate;
-    int count = 0;
     int ok = 1;
 
-    while (time(NULL) - start < times)
+    while ((time(NULL) - start) < times)
     {
         if (ok){
             for(int message = 0; message < rate; message++){
                 argument->i = i;
-                pthread_t thread; 
-                pthread_create( &thread, NULL, rcv, (void*) argument);
+                pthread_create( &thread_pool[i], NULL, rcv, (void*) argument);
                 i++;
-                count ++;
             }
-        }
-        ok = 0;
-        if (time(NULL) - temp != 0){
+            ok = 0;
+        } else if ((time(NULL) - temp) != 0){
             ok = 1;
-            count = 0;
             temp = time(NULL);
-            
         }
-    }        
+    } 
 
+    //printf("%d threads launched\n", i);     
+
+    for (int i = 0; i < rate*times; i++){
+        pthread_join(thread_pool[i], NULL);
+    }  
+
+    int end = time(NULL);
    
     
-    printf("number of request : %d\n", i);
-    printf("application quits\n");
+    // printf("number of request : %d\n", i);
+    // printf("application quits\n");
+    printf("%d\n", mean(argument->receive_times, rate*times));
+
     free(key);
     free(argument->receive_times);
     free(argument);
