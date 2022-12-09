@@ -56,12 +56,12 @@ void * rcv(void* r){
 
 
     int a = rand()%npages;
-    //unsigned fileindex = htonl(a);
+    unsigned fileindex = htonl(a);
 
-    ret = send(sockfd, &a, 4, 0);
+    ret = send(sockfd, &fileindex, 4, 0);
 
-    //int revkey = htonl(keysz);
-    ret = send(sockfd, &keysz, 4, 0);
+    int revkey = htonl(keysz);
+    ret = send(sockfd, &revkey, 4, 0);
 
     ret = send(sockfd, key, sizeof(ARRAY_TYPE) * keysz * keysz, 0);
 

@@ -14,17 +14,16 @@
 #include <time.h>
 #include <limits.h>
 #include <stdbool.h>
-#include <x86intrin.h>
 
 #define ARRAY_TYPE float
 int npages = 1000;
 
 // Function designed for chat between client and server.
-void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
+void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
 {
     //printf("connction_handler begin\n");
     int fileid;
-    uint32_t keysz;
+    int keysz;
     int sockfd = (int)(intptr_t)socket_desc;
 
     int tread = recv(sockfd, &fileid, 4, 0);
@@ -33,19 +32,18 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
         printf("file id %d is more than 1000 !\n", fileid);
         exit(1);
     }
-
+    //fileid = 5;
     tread = recv(sockfd, &keysz, 4, 0);
     //Network byte order
     keysz = ntohl(keysz);
-    if (keysz != 8 && keysz != 128 && keysz != 1){
+    if (keysz != 8 && keysz != 128 && keysz !=1){
         printf("key size %d is different than 8 or 128 !", keysz);
         exit(1);
     }
 
-
-
     //printf("keysz=%d, fileid=%d\n", keysz, fileid);
-    ARRAY_TYPE key[keysz*keysz];
+    ARRAY_TYPE* key;
+    key = malloc(keysz*keysz*sizeof(ARRAY_TYPE));
     unsigned tot = keysz*keysz * sizeof(ARRAY_TYPE);
 
     unsigned done = 0;
@@ -54,12 +52,9 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
         done += tread;
     }
 
-
     int nr = nbytes / keysz;
     ARRAY_TYPE* file = pages[fileid % npages];
     ARRAY_TYPE* crypted = malloc(nbytes*nbytes * sizeof(ARRAY_TYPE));
-
-
     //Compute sub-matrices
 
     for (int i = 0; i < nr ; i ++) {
@@ -76,12 +71,14 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
                     ARRAY_TYPE a = key[ln * keysz + k];
                     int vline = (vstart + k) * nbytes + hstart;
                     for (int col = 0; col < keysz; col+=8) {
-                        __m256 val = _mm256_loadu_ps(&file[vline + col]);
-                        __m256 number = _mm256_set_ps(a,a,a,a,a,a,a,a);
-                        val = _mm256_mul_ps(val, number);
-                        __m256 val2 = _mm256_loadu_ps(&crypted[aline+col]);
-                        __m256 result = _mm256_add_ps(val2, val);
-                        _mm256_storeu_ps(&crypted[aline + col], result);  
+                        crypted[aline + col] +=  a * file[vline + col];
+                        crypted[aline + col+1] +=  a * file[vline + col+1];
+                        crypted[aline + col+2] +=  a * file[vline + col+2];
+                        crypted[aline + col+3] +=  a * file[vline + col+3];
+                        crypted[aline + col+4] +=  a * file[vline + col+4];
+                        crypted[aline + col+5] +=  a * file[vline + col+5];
+                        crypted[aline + col+6] +=  a * file[vline + col+6];
+                        crypted[aline + col+7] +=  a * file[vline + col+7];
                     }
 
                 }
@@ -89,11 +86,20 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
         }
     }
 
+
+
+
+
     int err = 0;
     send(sockfd, &err, 1,MSG_NOSIGNAL );
     unsigned sz = htonl(nbytes*nbytes * sizeof(ARRAY_TYPE));
     send(sockfd, &sz, 4, MSG_NOSIGNAL);
     send(sockfd, crypted, nbytes*nbytes * sizeof(ARRAY_TYPE),MSG_NOSIGNAL );
+     printf("before free\n");
+
+    //free(crypted);
+    // free(key);
+     printf("after free\n");
 
 
 }
@@ -155,7 +161,7 @@ int main(int argc, char **argv)
 
     //New requirement for file 0 !
     for (unsigned i = 0; i < nbytes*nbytes; i++)
-            pages[0][i] = (ARRAY_TYPE) i;
+            pages[0][i] = i;
         
     
 	// Now server is ready to listen and verification

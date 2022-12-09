@@ -9,7 +9,7 @@ RATE=20
 TIME=5
 IP=127.0.0.1
 
-all : client server server-optim
+all : client server server-float server-float-avx
 
 client:
 	$(CC) client.c -o client -lpthread $(FLAG)
@@ -18,8 +18,11 @@ client:
 server:
 	$(CC) $(LP) -o server server.c $(FLAG)
 
-server-optim:
-	$(CC) $(LP) -o server-optim server-optim.c $(FLAG)
+server-float:
+	$(CC) $(LP) -o server-float server-float.c $(FLAG)
+
+server-float-avx:
+	$(CC) $(LP) -o server-float-avx server-float-avx.c $(FLAG) -mavx -g
 
 run-client:
 	./client -k $(KEY_SIZE) -r $(RATE) -t $(TIME) 127.0.0.1:2241
@@ -30,11 +33,22 @@ run-time-client:
 run-server:
 	./server -j $(THREAD) -s $(FILE_SIZE) -p $(PORT)
 
-run-server-optim:
-	./server-optim -j $(THREAD) -s $(FILE_SIZE) -p $(PORT)
+run-server-float:
+	./server-float -j $(THREAD) -s $(FILE_SIZE) -p $(PORT)
+
+
+run-server-float-avx:
+	./server-float-avx -j $(THREAD) -s $(FILE_SIZE) -p $(PORT)
 
 clean:
 	rm server
-	rm server-optim
+	rm server-float
 	rm client
+	rm server-float-avx
+
+graph : all 
+	./script.sh
+
+tar:
+	tar -zcvf Part3.tar.gz client.c server.c server-float.c server-float-avx.c Makefile plot.py script.sh
 
