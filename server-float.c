@@ -21,7 +21,6 @@ int npages = 1000;
 // Function designed for chat between client and server.
 void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
 {
-    //printf("connction_handler begin\n");
     int fileid;
     int keysz;
     int sockfd = (int)(intptr_t)socket_desc;
@@ -37,54 +36,91 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
     //Network byte order
     keysz = ntohl(keysz);
     if (keysz != 8 && keysz != 128 && keysz !=1){
-        printf("key size %d is different than 8 or 128 !", keysz);
+        printf("key size %d is different than 8 or 128 or 1 !", keysz);
         exit(1);
     }
 
     //printf("keysz=%d, fileid=%d\n", keysz, fileid);
-    ARRAY_TYPE* key;
-    key = malloc(keysz*keysz*sizeof(ARRAY_TYPE));
+
+
+    ARRAY_TYPE key[keysz*keysz];
+
     unsigned tot = keysz*keysz * sizeof(ARRAY_TYPE);
 
     unsigned done = 0;
+
     while (done < tot) {
-        tread = recv(sockfd, key, tot- done, 0);
+        tread = recv(sockfd, key, tot-done, 0);
         done += tread;
     }
 
     int nr = nbytes / keysz;
     ARRAY_TYPE* file = pages[fileid % npages];
     ARRAY_TYPE* crypted = malloc(nbytes*nbytes * sizeof(ARRAY_TYPE));
+
     //Compute sub-matrices
 
-    for (int i = 0; i < nr ; i ++) {
-        int vstart = i * keysz;
-        for (int j = 0; j < nr; j++) {
-            int hstart = j * keysz;
+    if (keysz > 1){    
+        for (int i = 0; i < nr ; i ++) {
+            int vstart = i * keysz;
+            for (int j = 0; j < nr; j++) {
+                int hstart = j * keysz;
 
-            //Do the sub-matrix multiplication
-            for (int ln = 0; ln < keysz; ln++) {
+                //Do the sub-matrix multiplication
+                for (int ln = 0; ln < keysz; ln++) {
 
-                int aline = (vstart + ln) * nbytes + hstart;
-                for (int k = 0; k < keysz; k++) {
+                    int aline = (vstart + ln) * nbytes + hstart;
+                    for (int k = 0; k < keysz; k++) {
+                        
+                        //printf("ln*keysz + k = %d\n", ln*keysz+k);
+                        ARRAY_TYPE a = key[ln * keysz + k];
 
-                    ARRAY_TYPE a = key[ln * keysz + k];
-                    int vline = (vstart + k) * nbytes + hstart;
-                    for (int col = 0; col < keysz; col+=8) {
-                        crypted[aline + col] +=  a * file[vline + col];
-                        crypted[aline + col+1] +=  a * file[vline + col+1];
-                        crypted[aline + col+2] +=  a * file[vline + col+2];
-                        crypted[aline + col+3] +=  a * file[vline + col+3];
-                        crypted[aline + col+4] +=  a * file[vline + col+4];
-                        crypted[aline + col+5] +=  a * file[vline + col+5];
-                        crypted[aline + col+6] +=  a * file[vline + col+6];
-                        crypted[aline + col+7] +=  a * file[vline + col+7];
+                        int vline = (vstart + k) * nbytes + hstart;
+                        for (int col = 0; col < keysz; col+=8) {
+                            crypted[aline + col] +=  a * file[vline + col];
+                            crypted[aline + col+1] +=  a * file[vline + col+1];
+                            crypted[aline + col+2] +=  a * file[vline + col+2];
+                            crypted[aline + col+3] +=  a * file[vline + col+3];
+                            crypted[aline + col+4] +=  a * file[vline + col+4];
+                            crypted[aline + col+5] +=  a * file[vline + col+5];
+                            crypted[aline + col+6] +=  a * file[vline + col+6];
+                            crypted[aline + col+7] +=  a * file[vline + col+7];
+                        }
+
                     }
-
                 }
             }
         }
     }
+    else{
+        for (int i = 0; i < nr ; i ++) {
+            int vstart = i * keysz;
+            for (int j = 0; j < nr; j++) {
+                int hstart = j * keysz;
+
+                //Do the sub-matrix multiplication
+
+                int aline = (vstart) * nbytes + hstart;
+                
+                //printf("ln*keysz + k = %d\n", ln*keysz+k);
+                ARRAY_TYPE a = key[keysz];
+
+                int vline = (vstart) * nbytes + hstart;
+                for (int col = 0; col < keysz; col+=8) {
+                    crypted[aline + col] +=  a * file[vline + col];
+                    crypted[aline + col+1] +=  a * file[vline + col+1];
+                    crypted[aline + col+2] +=  a * file[vline + col+2];
+                    crypted[aline + col+3] +=  a * file[vline + col+3];
+                    crypted[aline + col+4] +=  a * file[vline + col+4];
+                    crypted[aline + col+5] +=  a * file[vline + col+5];
+                    crypted[aline + col+6] +=  a * file[vline + col+6];
+                    crypted[aline + col+7] +=  a * file[vline + col+7];
+                }
+            }
+        }
+    
+    }
+
 
 
 
@@ -95,11 +131,8 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE **pages)
     unsigned sz = htonl(nbytes*nbytes * sizeof(ARRAY_TYPE));
     send(sockfd, &sz, 4, MSG_NOSIGNAL);
     send(sockfd, crypted, nbytes*nbytes * sizeof(ARRAY_TYPE),MSG_NOSIGNAL );
-     printf("before free\n");
 
-    //free(crypted);
-    // free(key);
-     printf("after free\n");
+    free(crypted);
 
 
 }

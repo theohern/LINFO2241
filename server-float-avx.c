@@ -62,31 +62,61 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
 
     //Compute sub-matrices
 
-    for (int i = 0; i < nr ; i ++) {
-        int vstart = i * keysz;
-        for (int j = 0; j < nr; j++) {
-            int hstart = j * keysz;
+    if (keysz > 1){    
+        for (int i = 0; i < nr ; i ++) {
+            int vstart = i * keysz;
+            for (int j = 0; j < nr; j++) {
+                int hstart = j * keysz;
 
-            //Do the sub-matrix multiplication
-            for (int ln = 0; ln < keysz; ln++) {
+                //Do the sub-matrix multiplication
+                for (int ln = 0; ln < keysz; ln++) {
 
-                int aline = (vstart + ln) * nbytes + hstart;
-                for (int k = 0; k < keysz; k++) {
+                    int aline = (vstart + ln) * nbytes + hstart;
+                    for (int k = 0; k < keysz; k++) {
+                        
+                        //printf("ln*keysz + k = %d\n", ln*keysz+k);
+                        ARRAY_TYPE a = key[ln * keysz + k];
 
-                    ARRAY_TYPE a = key[ln * keysz + k];
-                    int vline = (vstart + k) * nbytes + hstart;
-                    for (int col = 0; col < keysz; col+=8) {
-                        __m256 val = _mm256_loadu_ps(&file[vline + col]);
-                        __m256 number = _mm256_set_ps(a,a,a,a,a,a,a,a);
-                        val = _mm256_mul_ps(val, number);
-                        __m256 val2 = _mm256_loadu_ps(&crypted[aline+col]);
-                        __m256 result = _mm256_add_ps(val2, val);
-                        _mm256_storeu_ps(&crypted[aline + col], result);  
+                        int vline = (vstart + k) * nbytes + hstart;
+                        for (int col = 0; col < keysz; col+=8) {
+                            __m256 val = _mm256_loadu_ps(&file[vline + col]);
+                            __m256 number = _mm256_set_ps(a,a,a,a,a,a,a,a);
+                            val = _mm256_mul_ps(val, number);
+                            __m256 val2 = _mm256_loadu_ps(&crypted[aline+col]);
+                            __m256 result = _mm256_add_ps(val2, val);
+                            _mm256_storeu_ps(&crypted[aline + col], result);  
+                        }
+
                     }
-
                 }
             }
         }
+    }
+    else{
+        for (int i = 0; i < nr ; i ++) {
+            int vstart = i * keysz;
+            for (int j = 0; j < nr; j++) {
+                int hstart = j * keysz;
+
+                //Do the sub-matrix multiplication
+
+                int aline = (vstart) * nbytes + hstart;
+                
+                //printf("ln*keysz + k = %d\n", ln*keysz+k);
+                ARRAY_TYPE a = key[keysz];
+
+                int vline = (vstart) * nbytes + hstart;
+                for (int col = 0; col < keysz; col+=8) {
+                    __m256 val = _mm256_loadu_ps(&file[vline + col]);
+                    __m256 number = _mm256_set_ps(a,a,a,a,a,a,a,a);
+                    val = _mm256_mul_ps(val, number);
+                    __m256 val2 = _mm256_loadu_ps(&crypted[aline+col]);
+                    __m256 result = _mm256_add_ps(val2, val);
+                    _mm256_storeu_ps(&crypted[aline + col], result);  
+                }
+            }
+        }
+    
     }
 
     int err = 0;
@@ -94,6 +124,7 @@ void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
     unsigned sz = htonl(nbytes*nbytes * sizeof(ARRAY_TYPE));
     send(sockfd, &sz, 4, MSG_NOSIGNAL);
     send(sockfd, crypted, nbytes*nbytes * sizeof(ARRAY_TYPE),MSG_NOSIGNAL );
+    free(crypted);
 
 
 }

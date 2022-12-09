@@ -56,14 +56,19 @@ if (Flag == "nthreads"):
 
 if (Flag == "phase3"):
     file = open("time.txt", 'r')
-    y = file.readlines()
-    x = [128,256,512,1024]
-    plt.figure()
-    plt.title("time compared to SSID and SIMD")
-    plt.xlabel("size of matrix")
-    plt.ylabel("time (s)")
-
-    plt.plot(x, y)
+    ybis = file.readlines()
+    x = [16,32,64,128,256,512,1024]
+    plt.title("Request latency for rate 4 and time 5")
+    plt.xlabel("size of the files")
+    plt.ylabel("time (ms)")
+    y = np.zeros(len(ybis))
+    for i in range(len(ybis)):
+        y[i] = int(ybis[i][:-1])
+        y[i] = y[i]/1000
+    plt.plot(x, y[0:7], label="server without SIMD")
+    plt.plot(x, y[7:14], label="server with SIMD")
+    plt.legend()
     #plt.gca().legend(('line * column','line * line'))
-    plt.show()
+    #plt.show()
+    plt.savefig("graph.png")
 

@@ -9,7 +9,7 @@ do
     echo "server launched with file size $i"
     ./server-float -j 1 -s $i -p 2241 & \
     sleep 1
-    ./client -k 1 -r 4 -t 5 127.0.0.1:2241 >> time.txt
+    ./client -k 8 -r 4 -t 5 127.0.0.1:2241 >> time.txt
     pkill -f "./server-float -j 1 -s $i -p 2241"
     sleep 1
 done
