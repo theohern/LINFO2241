@@ -9,11 +9,13 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
+#include <math.h>
 
 #define ARRAY_TYPE float
 int npages = 1000;
 
-struct timeval begin, finish;
+int real;
+struct timeval begin, finish, temps;
 
 typedef struct arg
 {
@@ -100,6 +102,17 @@ int mean (int* tab, int size){
     return sum/size;
 }
 
+int getts(){
+    gettimeofday(&temps, NULL);
+    return temps.tv_sec*1000000+temps.tv_usec - real ; //
+}
+
+uint64_t ran_expo(double lambda){
+    double u;
+    u = rand() / (RAND_MAX + 1.0);
+
+    return -log(1- u) * 1000000 / lambda;
+}
 
 int
 main(int argc, char **argv){
@@ -157,8 +170,6 @@ main(int argc, char **argv){
     argument->port = port;
 
 
-
-
     pthread_t thread_pool[rate*times];
 
     for (int i = 0; i < rate*times; i++){
@@ -170,7 +181,25 @@ main(int argc, char **argv){
     i = 0;
     double diffrate = 1/rate;
     int ok = 1;
+    int real = 0;
+    real = getts();
 
+
+
+    while(getts() < times*1000000){
+        next += diffrate;
+        while(getts() < next){
+            usleep((next - getts()));
+        }
+        argument->i = i;
+        pthread_create(&thread_pool[i], NULL, rcv, (void*) argument);
+        printf("message send\n");
+        i++;
+    }
+
+
+
+/*
     while ((time(NULL) - start) < times)
     {
         if (ok){
@@ -185,6 +214,7 @@ main(int argc, char **argv){
             temp = time(NULL);
         }
     } 
+*/
 
     //printf("%d threads launched\n", i);     
 
