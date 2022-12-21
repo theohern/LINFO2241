@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg
 
-Flag = "ran_expo"
+Flag = "ER"
 
 if (Flag == "mult"):
     x = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,1800, 1900, 2000]
@@ -83,4 +83,17 @@ if (Flag == "ran_expo"):
     plt.xlabel("number of threads")
     plt.ylabel("time (s)")
     plt.plot(x, y)
+    plt.show() 
+
+if (Flag == "ER"):
+    x = []
+    for i in range(11):
+        x.append(i+1)
+    y = [3505.32, 3517.65, 3530.08, 3542.58, 3555.18, 3567.86, 3580.63, 3593.60, 3606.46, 3619.52, 0]
+    ybis = [3493, 3413, 3201, 3295, 3561, 3835, 3646, 3891, 3646, 3735, 3800]
+    plt.title("value for the function ran_expo")
+    plt.xlabel("number of threads")
+    plt.ylabel("time (s)")
+    plt.plot(x, y)
+    plt.plot(x, ybis)
     plt.show() 
