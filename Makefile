@@ -1,6 +1,6 @@
 CC=gcc
 LP=-lpthread
-FLAG=-mno-sse2 -mno-avx -mno-avx2 -mno-avx512f -fno-unroll-loops -fno-tree-vectorize -O2
+FLAG=-mno-sse2 -mno-avx -mno-avx2 -mno-avx512f -fno-unroll-loops -fno-tree-vectorize -O2 -lm
 FILE_SIZE=1024
 PORT=2241
 THREAD=1
@@ -9,10 +9,13 @@ RATE=20
 TIME=5
 IP=127.0.0.1
 
-all : client server server-float server-float-avx
+all : client server server-float server-float-avx client-queue
 
 client:
 	$(CC) client.c -o client -lpthread $(FLAG)
+
+client-queue:
+	$(CC) client-queue.c -o client-queue -lpthread $(FLAG)
 
 
 server:
@@ -25,7 +28,7 @@ server-float-avx:
 	$(CC) $(LP) -o server-float-avx server-float-avx.c $(FLAG) -mavx -g
 
 run-client:
-	./client -k $(KEY_SIZE) -r $(RATE) -t $(TIME) 127.0.0.1:2241
+	./client -k $(KEY_SIZE) -r $(RATE) -t $(TIME) 127.0.0.1:2241 
 
 run-time-client:
 	/usr/bin/time -f %e ./client -k $(KEY_SIZE) -r $(RATE) -t $(TIME) $(IP):$(PORT) >> times.txt
@@ -51,4 +54,7 @@ graph : all
 
 tar:
 	tar -zcvf Part3.tar.gz client.c server.c server-float.c server-float-avx.c Makefile plot.py script.sh
+
+µ :
+	./testµ.sh
 

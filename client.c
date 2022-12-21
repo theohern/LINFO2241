@@ -107,12 +107,6 @@ int getts(){
     return temps.tv_sec*1000000+temps.tv_usec - real ; //
 }
 
-uint64_t ran_expo(double lambda){
-    double u;
-    u = rand() / (RAND_MAX + 1.0);
-
-    return -log(1- u) * 1000000 / lambda;
-}
 
 int
 main(int argc, char **argv){
@@ -172,7 +166,22 @@ main(int argc, char **argv){
 
     pthread_t thread_pool[rate*times];
 
-    for (int i = 0; i < rate*times; i++){
+    for (i/*
+    while ((time(NULL) - start) < times)
+    {
+        if (ok){
+            for(int message = 0; message < rate; message++){
+                argument->i = i;
+                pthread_create( &thread_pool[i], NULL, rcv, (void*) argument);
+                i++;
+            }
+            ok = 0;
+        } else if ((time(NULL) - temp) != 0){
+            ok = 1;
+            temp = time(NULL);
+        }
+    } 
+*/nt i = 0; i < rate*times; i++){
         pthread_create(&thread_pool[i], NULL, rcv, argument);
     }
 
@@ -198,23 +207,6 @@ main(int argc, char **argv){
     }
 
 
-
-/*
-    while ((time(NULL) - start) < times)
-    {
-        if (ok){
-            for(int message = 0; message < rate; message++){
-                argument->i = i;
-                pthread_create( &thread_pool[i], NULL, rcv, (void*) argument);
-                i++;
-            }
-            ok = 0;
-        } else if ((time(NULL) - temp) != 0){
-            ok = 1;
-            temp = time(NULL);
-        }
-    } 
-*/
 
     //printf("%d threads launched\n", i);     
 

@@ -179,10 +179,13 @@ main(int argc, char **argv){
     int start = time(NULL);
     int temp = time(NULL);
     i = 0;
-    double diffrate = 1/rate;
+    double diffrate = 1000000/rate;
     int ok = 1;
-    int real = 0;
+    real = 0;
     real = getts();
+    next = 0;
+
+    printf("envoi des requêtes\n");
 
 
 
@@ -193,7 +196,6 @@ main(int argc, char **argv){
         }
         argument->i = i;
         pthread_create(&thread_pool[i], NULL, rcv, (void*) argument);
-        printf("message send\n");
         i++;
     }
 
