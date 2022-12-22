@@ -15,9 +15,12 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <x86intrin.h>
+#include <time.h>
+#include <sys/time.h>
 
 #define ARRAY_TYPE float
 int npages = 1000;
+struct timeval begin, finish;
 
 // Function designed for chat between client and server.
 void connection_handler(void *socket_desc,int nbytes, ARRAY_TYPE** pages)
@@ -175,7 +178,11 @@ int main(int argc, char **argv)
     while( (client_sock = accept(sockfd, (struct sockaddr *)&servaddr, (socklen_t*)&cli)) )
     {
         //printf("server accept the socket\n");
+
+        // gettimeofday(&begin, NULL);
         connection_handler((void*)(intptr_t)client_sock, nbytes, pages);
+        // gettimeofday(&finish, NULL);
+        // printf("time response : %d\n", ((finish.tv_sec-begin.tv_sec)*1000000)+(finish.tv_usec-begin.tv_usec));
     }
 
 

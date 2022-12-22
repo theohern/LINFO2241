@@ -27,6 +27,7 @@ typedef struct arg
 }arg_d;
 
 void * rcv(void* r){
+    gettimeofday(&begin, NULL);
     arg_d* argument = (arg_d*) r;
     ARRAY_TYPE* key = argument->key;
     int keysz = argument->keysz;
@@ -54,7 +55,6 @@ void * rcv(void* r){
     }
 
 
-    gettimeofday(&begin, NULL);
 
 
     int a = rand()%npages;
@@ -95,9 +95,13 @@ void * rcv(void* r){
 }
     
 int mean (int* tab, int size){
-    int sum = 0;
+    uint64_t sum = 0;
     for (int i = 0; i < size; i++){
-        sum+=tab[i];
+        if (tab[i] == 0){
+            size -=1;
+        }else{
+            sum+=tab[i];
+        }  
     }
     return sum/size;
 }
@@ -112,6 +116,22 @@ uint64_t ran_expo(double lambda){
     u = rand() / (RAND_MAX + 1.0);
 
     return -log(1- u) * 1000000 / lambda;
+}
+
+double standart_deviation(int *tab, int size, int mean){
+    int val = 0;
+    uint64_t sum = 0;
+    for (int i = 0 ; i < size; i++){
+        if (tab[i] == 0){
+            size -= 1;
+        }else{
+            val = tab[i]-mean;
+            sum += (val*val);
+        }
+    }
+    int val2 = sum/size;
+    //printf("%d\n", val2);
+    return sqrt(val2);
 }
 
 int
@@ -185,15 +205,15 @@ main(int argc, char **argv){
     real = getts();
     next = 0;
 
-    printf("envoi des requêtes\n");
 
 
 
-    while(getts() < times*1000000){
+    while(getts() < times*1000000 && i < times*rate){
         next += diffrate;
         while(getts() < next){
             usleep((next - getts()));
         }
+        // usleep(ran_expo(rate));
         argument->i = i;
         pthread_create(&thread_pool[i], NULL, rcv, (void*) argument);
         i++;
@@ -210,15 +230,14 @@ main(int argc, char **argv){
                 pthread_create( &thread_pool[i], NULL, rcv, (void*) argument);
                 i++;
             }
+155.203093
             ok = 0;
         } else if ((time(NULL) - temp) != 0){
             ok = 1;
             temp = time(NULL);
         }
     } 
-*/
-
-    //printf("%d threads launched\n", i);     
+*/  
 
     for (int i = 0; i < rate*times; i++){
         pthread_join(thread_pool[i], NULL);
@@ -227,9 +246,15 @@ main(int argc, char **argv){
     int end = time(NULL);
    
     
-    // printf("number of request : %d\n", i);
+    printf("number of request : %d\n", i);
     // printf("application quits\n");
-    printf("%d\n", mean(argument->receive_times, rate*times));
+    int m = mean(argument->receive_times, i);
+    double std = standart_deviation(argument->receive_times, i,m);
+    printf("mean : %d\n",m);
+    printf("standart déviation : %f\n", std);
+    printf("variance : %f\n", std*std);
+
+
 
     free(key);
     free(argument->receive_times);
